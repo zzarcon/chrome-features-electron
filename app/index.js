@@ -1,15 +1,20 @@
+'use strict';
+
 const Rx = require('rx');
 const request = require('superagent');
 const featuresJson = 'https://www.chromestatus.com/features.json';
+let $versions;
 
 document.addEventListener("DOMContentLoaded", domReady);
 
 function domReady() {
+  $versions = document.getElementById('versions');
+
   var requestStream = Rx.Observable.just(featuresJson);
-  var responseStream = requestStream.flatMap(requestUrl => 
+  var responseStream = requestStream.flatMap(requestUrl =>
     Rx.Observable.fromPromise(get(requestUrl))
-  );
-  var fooStream = responseStream.map((feature) => {
+  ).flatMap(features => features);
+  var featuresStream = responseStream.map((feature) => {
     return {
       name: feature.name,
       summary: feature.summary,
@@ -20,23 +25,18 @@ function domReady() {
       milestone: feature.shipped_milestone
     }
   });
-  // responseStream.subscribe(console.log.bind(console));
-  // shipped_milestone, name, summary, created, updated, category, impl_status_chrome (No active development, Proposed, In development, Behind a flag, Enabled by default)
-  fooStream.subscribe(next, err, completed);
-  // responseStream.subscribe(next, err, completed);
+  var versionsStream = featuresStream.map((feature) => feature.milestone).distinct();
+
+  versionsStream.subscribe(renderVersions);
 }
 
-function next() {
-  console.log('next');
+function renderVersions(version) {
+  var li = document.createElement('li');
+
+  li.innerText = version;
+
+  $versions.appendChild(li)
 }
-
-function err() {
-
-}
-
-function completed() {
-  console.log('completed');
-} 
 
 function get(url) {
   return new Promise((resolve) => {
